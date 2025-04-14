@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-gray-50 text-gray-800;
+  }
+
+  :root {
+    --reddit-orange: 25 100% 50%;
+    --reddit-blue: 210 100% 41%;
+    --sentiment-positive: 142 72% 40%;
+    --sentiment-neutral: 220 5% 46%;
+    --sentiment-negative: 0 84% 60%;
+  }
+}
+
+.text-reddit-orange {
+  color: hsl(var(--reddit-orange));
+}
+
+.text-reddit-blue {
+  color: hsl(var(--reddit-blue));
+}
+
+.bg-reddit-orange {
+  background-color: hsl(var(--reddit-orange));
+}
+
+.bg-reddit-blue {
+  background-color: hsl(var(--reddit-blue));
+}
+
+.hover\:bg-orange-500:hover {
+  background-color: hsl(25 100% 45%);
+}
+
+.focus\:ring-reddit-orange:focus {
+  --tw-ring-color: hsl(var(--reddit-orange));
+}
+
+.focus\:border-reddit-blue:focus {
+  border-color: hsl(var(--reddit-blue));
+}
+
+.focus\:ring-reddit-blue:focus {
+  --tw-ring-color: hsl(var(--reddit-blue));
+}
