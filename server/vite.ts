@@ -54,7 +54,8 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx?v=${nanoid()}"`
       );
       const page = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(page);
+      // Set Content-Type header explicitly so that the browser executes it as HTML
+      res.status(200).set({ "Content-Type": "text/html; charset=utf-8" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -63,18 +64,29 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  // Here we resolve to the directory where the production build assets are located.
+  const distPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`
+      `Could not find the build directory: ${distPath}. Please run the build command to generate static assets.`
     );
   }
 
-  app.use(express.static(distPath));
+  // Use express.static to serve files with correct MIME types
+  app.use(express.static(distPath, { setHeaders: setCustomCacheControl }));
 
-  // Fall through to index.html if the file doesn't exist
+  // When a route is not found, send the index.html file with proper Content-Type header.
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(distPath, "index.html"), {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
   });
+}
+
+// Optionally set custom cache control headers for your static assets (adjust as needed)
+function setCustomCacheControl(res: express.Response, path: string) {
+  if (path.endsWith(".html")) {
+    res.setHeader("Cache-Control", "no-cache");
+  }
 }
