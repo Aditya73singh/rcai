@@ -1,10 +1,24 @@
 import express from "express";
 import http from "http";
+import path from "path";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 const server = http.createServer(app);
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000; // Changed to match .replit configuration
+
+// Add middleware to properly set content types
+app.use((req, res, next) => {
+  const url = req.url;
+  if (url.endsWith('.js')) {
+    res.type('application/javascript');
+  } else if (url.endsWith('.css')) {
+    res.type('text/css');
+  } else if (url.endsWith('.html')) {
+    res.type('text/html');
+  }
+  next();
+});
 
 (async () => {
   try {
@@ -17,6 +31,7 @@ const port = process.env.PORT || 3000;
       serveStatic(app);
       log("Serving static files");
     }
+    
     server.listen(port, () => {
       log(`Server running on port ${port}`);
     });
