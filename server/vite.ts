@@ -6,7 +6,7 @@ import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
-// Obtain __dirname in ES modules using URL (cross-platform compatible)
+// Get the correct __dirname in ESM
 const __dirname = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
 
 const viteLogger = createLogger();
@@ -23,7 +23,7 @@ export function log(message: string, source = "express") {
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
-    middlewareMode: true as const,  // Fixed typing issue
+    middlewareMode: true as const,
     hmr: { server },
     allowedHosts: true,
   };
@@ -43,50 +43,90 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
+  
+  // Handle all other routes by sending the index.html
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
+    
     try {
+      // Get the absolute path to the index.html file
       const clientTemplate = path.resolve(__dirname, "..", "client", "index.html");
-      // Always reload the index.html file from disk in case it changes
+      
+      // Check if index.html exists
+      if (!fs.existsSync(clientTemplate)) {
+        log(`Error: index.html not found at ${clientTemplate}`);
+        return res.status(404).send("index.html not found. Make sure the client/index.html file exists.");
+      }
+      
+      // Read and transform index.html
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
+      
       const page = await vite.transformIndexHtml(url, template);
-      // Set Content-Type header explicitly so that the browser executes it as HTML
-      res.status(200).set({ "Content-Type": "text/html; charset=utf-8" }).end(page);
+      
+      // Set Content-Type header explicitly
+      res.status(200)
+        .set({ "Content-Type": "text/html; charset=utf-8" })
+        .end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
+      console.error(`Error processing request: ${e}`);
       next(e);
     }
   });
 }
 
 export function serveStatic(app: Express) {
-  // Here we resolve to the directory where the production build assets are located.
-  const distPath = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "public");
-
+  // Path to the built files
+  const distPath = path.resolve(process.cwd(), "dist", "public");
+  
+  // Check if dist/public exists
   if (!fs.existsSync(distPath)) {
+    log(`Warning: Build directory not found at ${distPath}`);
     throw new Error(
       `Could not find the build directory: ${distPath}. Please run the build command to generate static assets.`
     );
   }
-
-  // Use express.static to serve files with correct MIME types
-  app.use(express.static(distPath, { setHeaders: setCustomCacheControl }));
-
-  // When a route is not found, send the index.html file with proper Content-Type header.
+  
+  // Serve static files with proper MIME types
+  app.use(express.static(distPath, { 
+    setHeaders: (res, path) => {
+      setCustomCacheControl(res, path);
+      
+      // Set correct MIME types for common file extensions
+      if (path.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (path.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css');
+      } else if (path.endsWith('.html')) {
+        res.setHeader('Content-Type', 'text/html');
+      }
+    }
+  }));
+  
+  // Serve index.html for all routes not found (SPA behavior)
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"), {
+    const indexPath = path.resolve(distPath, "index.html");
+    
+    if (!fs.existsSync(indexPath)) {
+      return res.status(404).send("index.html not found in build directory. Make sure you ran the build command properly.");
+    }
+    
+    res.sendFile(indexPath, {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   });
 }
 
-// Optionally set custom cache control headers for your static assets (adjust as needed)
+// Set custom cache control headers for static assets
 function setCustomCacheControl(res: express.Response, path: string) {
   if (path.endsWith(".html")) {
     res.setHeader("Cache-Control", "no-cache");
+  } else if (path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg)$/)) {
+    // Cache assets that rarely change for up to a week
+    res.setHeader("Cache-Control", "public, max-age=604800");
   }
 }
