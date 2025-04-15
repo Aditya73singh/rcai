@@ -6,8 +6,8 @@ import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
-// Obtain __dirname in ES modules using URL
-const __dirname = path.dirname(new URL(import.meta.url).pathname);
+// Obtain __dirname in ES modules using URL (cross-platform compatible)
+const __dirname = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1"));
 
 const viteLogger = createLogger();
 
@@ -65,7 +65,7 @@ export async function setupVite(app: Express, server: Server) {
 
 export function serveStatic(app: Express) {
   // Here we resolve to the directory where the production build assets are located.
-  const distPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), "public");
+  const distPath = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "public");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
