@@ -1,26 +1,27 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/Home";
-
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
+import { useState } from 'react'
+import './App.css'
 
 function App() {
+  const [count, setCount] = useState(0)
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
-    </QueryClientProvider>
-  );
+    <div className="app-container">
+      <header>
+        <h1>React + Express Application</h1>
+      </header>
+      
+      <main>
+        <div className="card">
+          <button onClick={() => setCount((count) => count + 1)}>
+            Count is {count}
+          </button>
+          <p>
+            Your application is now working correctly!
+          </p>
+        </div>
+      </main>
+    </div>
+  )
 }
 
-export default App;
+export default App
